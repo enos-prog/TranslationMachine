@@ -1,0 +1,86 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.0'
+	id 'org.openjfx.javafxplugin' version '0.0.14'
+}
+
+group = 'com.example'
+version = '1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
+}
+
+javafx {
+    version = "23"
+    modules = [ 'javafx.controls', 'javafx.fxml' ]
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation project(':TranslationMachine-core')
+    implementation 'com.github.LowLevelSubmarine:GeniusLyricsAPI:1.0.3'
+    implementation 'org.json:json:20210307'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.8.2'
+	
+	implementation 'org.openjfx:javafx-controls:23.0.2'
+    implementation 'org.openjfx:javafx-graphics:23.0.2'
+    implementation "org.openjfx:javafx-graphics:23.0.2"
+    implementation "org.openjfx:javafx-base:23.0.2"
+    implementation "org.openjfx:javafx-media:23.0.2"
+}
+
+application {
+    mainClass = 'translation_machine.TranslationMachineUI'
+}
+
+buildDir = file("../TranslationMachine-work/build")
+
+run {
+    standardInput = System.in
+	jvmArgs = [
+		'--module-path', classpath.asPath,
+		'--add-modules', 'javafx.controls,javafx.fxml,javafx.graphics,javafx.media'
+	]
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += [
+        '--enable-preview',
+        '-Xlint:deprecation'
+    ]
+    options.encoding = 'UTF-8'
+}
+
+   // options.fork = true
+
+test {
+    useJUnitPlatform()
+    jvmArgs '--enable-preview'
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
+}
+
+shadowJar {
+    archiveBaseName.set('TranslationMachine')
+    archiveVersion.set('1.0')
+    archiveClassifier.set('all')
+
+    manifest {
+        attributes 'Main-Class': 'translation_machine.TranslationMachine'
+    }
+
+    mergeServiceFiles()
+}
