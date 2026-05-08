@@ -4,11 +4,17 @@ import java.util.*;
 
 public class SubstringFilter {
 
-    private static final double SIMILARITY_THRESHOLD = 0.45;
+    private static final double SIMILARITY_THRESHOLD = 0.25;
 
     public static List<String> filter(List<String> input) {
 
         List<String> result = new ArrayList<>();
+
+        System.out.println("\n----- FILTER START -----");
+        System.out.println("INPUT:");
+        for (String s : input) {
+            System.out.println(s);
+        }
 
         for (String candidate : input) {
 
@@ -18,8 +24,17 @@ public class SubstringFilter {
 
                 double similarity = tokenSimilarity(candidate, accepted);
 
+                System.out.println(
+                    "\nCOMPARE:\n" +
+                    "CANDIDATE: " + candidate + "\n" +
+                    "ACCEPTED: " + accepted + "\n" +
+                    "SIMILARITY: " + similarity
+                );
+
                 if (similarity >= SIMILARITY_THRESHOLD &&
                     !isMeaningfullyDifferent(candidate, accepted)) {
+
+                    System.out.println("REJECTED AS DUPLICATE");
 
                     tooSimilar = true;
                     break;
@@ -27,11 +42,19 @@ public class SubstringFilter {
             }
 
             if (!tooSimilar) {
+
+                System.out.println("ACCEPTED: " + candidate);
                 result.add(candidate);
             }
 
             if (result.size() == 3) break; // HARD LIMIT
         }
+
+        System.out.println("\nFINAL FILTERED:");
+        for (String s : result) {
+            System.out.println(s);
+        }
+        System.out.println("----- FILTER END -----\n");
 
         return result;
     }
@@ -49,10 +72,12 @@ public class SubstringFilter {
     }
 
     // ---------------- TOKEN SIMILARITY ----------------
-    private static double tokenSimilarity(String a, String b) {
+    /* private static double tokenSimilarity(String a, String b) {
 
-        Set<String> setA = new HashSet<>(Arrays.asList(a.toLowerCase().split("\\s+")));
-        Set<String> setB = new HashSet<>(Arrays.asList(b.toLowerCase().split("\\s+")));
+        Set<String> setA = new HashSet<>(Arrays.asList(a.toLowerCase().replaceAll("[^a-zA-Z0-9 ]", "")
+    .split("\\s+")));
+        Set<String> setB = new HashSet<>(Arrays.asList(b.toLowerCase().replaceAll("[^a-zA-Z0-9 ]", "")
+    .split("\\s+")));
 
         if (setA.isEmpty() || setB.isEmpty()) return 0;
 
@@ -63,6 +88,54 @@ public class SubstringFilter {
         union.addAll(setB);
 
         return (double) intersection.size() / union.size();
+    } */
+
+   public static double tokenSimilarity(String a, String b) {
+
+        Set<String> setA = normalize(a);
+        Set<String> setB = normalize(b);
+
+        if (setA.isEmpty() || setB.isEmpty()) return 0;
+
+        Set<String> intersection = new HashSet<>(setA);
+        intersection.retainAll(setB);
+
+        Set<String> union = new HashSet<>(setA);
+        union.addAll(setB);
+
+        return (double) intersection.size() / union.size();
+    }
+
+    private static Set<String> normalize(String text) {
+
+        Set<String> result = new HashSet<>();
+
+        String cleaned = text.toLowerCase()
+                .replaceAll("[^a-zA-Z0-9 ]", "");
+
+        cleaned = cleaned.replaceAll("(\\b\\w+\\b)(\\s+\\1)+", "$1");
+
+        List<String> stopWords = Arrays.asList(
+            "the","a","an","and","or","but",
+            "i","you","me","my","your",
+            "to","of","in","on","at",
+            "for","is","it","this","that",
+            "im","ive","ill","dont","cant",
+            "oh","ooh","yeah","uh",
+            "woah","shawty","na","la",
+            "hey","girl","boy"
+        );
+
+        for (String word : cleaned.split("\\s+")) {
+
+            if (word.length() <= 2) continue;
+
+            if (stopWords.contains(word)) continue;
+
+            result.add(word);
+        }
+
+        return result;
     }
 
     // ---------------- SEMANTIC OVERRIDE ----------------
@@ -97,10 +170,12 @@ public class SubstringFilter {
         Set<String> acceptedWords = new HashSet<>();
 
         for (String a : accepted) {
-            acceptedWords.addAll(Arrays.asList(a.toLowerCase().split("\\s+")));
+            acceptedWords.addAll(Arrays.asList(a.toLowerCase().replaceAll("[^a-zA-Z0-9 ]", "")
+    .split("\\s+")));
         }
 
-        for (String word : candidate.toLowerCase().split("\\s+")) {
+        for (String word : candidate.toLowerCase().replaceAll("[^a-zA-Z0-9 ]", "")
+    .split("\\s+")) {
             if (!acceptedWords.contains(word)) {
                 return true;
             }

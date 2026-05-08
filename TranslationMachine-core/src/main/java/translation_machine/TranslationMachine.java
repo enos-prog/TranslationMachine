@@ -32,75 +32,133 @@ public class TranslationMachine {
         return gla;
     }
 
-    public SongResult analyzeSong(String songTitle, String artistName) {
+   public SongResult analyzeSong(String songTitle, String artistName) {
 
         try {
+
             SongSearch search = new SongSearch(gla, songTitle);
 
             String lyrics = null;
 
             for (SongSearch.Hit hit : search.getHits()) {
-                if (hit.getArtist() == null || hit.getArtist().getName() == null) continue;
 
-                if (hit.getArtist().getName().equalsIgnoreCase(artistName)) {
+                if (hit.getArtist() == null ||
+                    hit.getArtist().getName() == null) continue;
+
+                if (hit.getArtist().getName()
+                        .equalsIgnoreCase(artistName)) {
+
                     try {
                         lyrics = hit.fetchLyrics();
                     } catch (Exception e) {
                         return null;
                     }
+
                     break;
                 }
             }
 
-            if (lyrics == null || lyrics.isBlank()) return null;
+            if (lyrics == null || lyrics.isBlank()) {
+                return null;
+            }
 
-            // 1. RAW
-            List<String> raw = LyricAnalyzer.findTopSubstrings(lyrics);
+            // ---------------- RAW ----------------
+            List<String> raw =
+                    LyricAnalyzer.findTopSubstrings(lyrics);
 
-            // 2. FILTER
-            List<String> filtered = SubstringFilter.filter(raw);
+            // ---------------- FILTER ----------------
+            List<String> filtered =
+                    SubstringFilter.filter(raw);
 
-            // 3. FINAL GUARANTEE (ALWAYS 3)
+            // ---------------- FINAL TOP 3 ----------------
             List<String> top3 = new ArrayList<>();
 
             for (String s : filtered) {
-                if (top3.size() == 3) break;
+
+                if (top3.size() >= 3) break;
+
                 top3.add(s);
             }
 
-            int i = 0;
-            while (top3.size() < 3 && i < raw.size()) {
-                if (!top3.contains(raw.get(i))) {
-                    top3.add(raw.get(i));
+            // fallback additions ONLY if different
+            /* for (String candidate : raw) {
+
+                if (top3.size() >= 3) break;
+
+                boolean duplicate = false;
+
+                for (String existing : top3) {
+
+                    double similarity =
+                            SubstringFilter.tokenSimilarity(
+                                    candidate,
+                                    existing
+                            );
+
+                    if (similarity >= 0.25) {
+                        duplicate = true;
+                        break;
+                    }
                 }
-                i++;
+
+                if (!duplicate) {
+                    top3.add(candidate);
+                }
+            } */
+
+           for (String candidate : raw) {
+
+                if (top3.size() >= 3) break;
+
+                if (!top3.contains(candidate)) {
+                    top3.add(candidate);
+                }
             }
 
-            // 4. FINAL SAFETY FILL
+            // safety fill
             while (top3.size() < 3) {
                 top3.add("No dominant theme");
             }
 
-            // 5. COLORS (MATCH EXACT SIZE)
+            // ---------------- COLORS ----------------
             String[] colors = new String[3];
 
             TextToColor textToColor = new TextToColor();
 
-            for (int j = 0; j < 3; j++) {
+            for (int i = 0; i < 3; i++) {
+
                 try {
-                    String main = MainIdea.getMainIdeaFromAPI(top3.get(j));
-                    String[] c = textToColor.getColorForText(main);
-                    colors[j] = (c != null && c.length > 1) ? c[1] : "#CCCCCC";
+
+                    String main =
+                            MainIdea.getMainIdeaFromAPI(top3.get(i));
+
+                    String[] colorData =
+                            textToColor.getColorForText(main);
+
+                    colors[i] =
+                            (colorData != null && colorData.length > 1)
+                                    ? colorData[1]
+                                    : "#CCCCCC";
+
                 } catch (Exception e) {
-                    colors[j] = "#CCCCCC";
+
+                    colors[i] = "#CCCCCC";
                 }
             }
 
-            String honorable = LyricAnalyzer.getHonorableMention(lyrics);
+            String honorable =
+                    LyricAnalyzer.getHonorableMention(lyrics);
 
-            return new SongResult(songTitle, artistName, top3, honorable, colors);
+            return new SongResult(
+                    songTitle,
+                    artistName,
+                    top3,
+                    honorable,
+                    colors
+            );
 
         } catch (Exception e) {
+
             e.printStackTrace();
             return null;
         }
@@ -162,11 +220,36 @@ public class TranslationMachine {
 
                             List<String> top3 = new ArrayList<>(filtered);
 
-                            while (top3.size() < 3 && top3.size() < raw.size()) {
+                            /* while (top3.size() < 3 && top3.size() < raw.size()) {
                                 top3.add(raw.get(top3.size()));
-                            }
+                            } */
                             
-                            for (String substring : LyricAnalyzer.findTopSubstrings(lyrics)) {
+                           while (top3.size() < 3 && i < raw.size()) {
+
+                                String candidate = raw.get(i);
+
+                                boolean duplicate = false;
+
+                                for (String existing : top3) {
+
+                                    double similarity =
+                                            SubstringFilter.tokenSimilarity(candidate, existing);
+
+                                    if (similarity >= 0.25) {
+                                        duplicate = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!duplicate) {
+                                    top3.add(candidate);
+                                }
+
+                                i++;
+                            }
+
+                            //for (String substring : LyricAnalyzer.findTopSubstrings(lyrics)) 
+                            for (String substring : top3) {
 
                                 String mainIntent = MainIdea.getMainIdeaFromAPI(substring);
                                 String[] colorData = textToColor.getColorForText(mainIntent);
